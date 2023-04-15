@@ -17,7 +17,6 @@ import {
   OwnershipTransferred,
   Transfer
 } from "../generated/schema"
-import { Address } from "@graphprotocol/graph-ts"
 
 export function handleApproval(event: ApprovalEvent): void {
   let entity = new Approval(
