@@ -1,3 +1,4 @@
+import { ByteArray, Bytes } from "@graphprotocol/graph-ts/common/collections"
 import {
   Approval as ApprovalEvent,
   Burned as BurnedEvent,
@@ -16,6 +17,7 @@ import {
   OwnershipTransferred,
   Transfer
 } from "../generated/schema"
+import { Address } from "@graphprotocol/graph-ts"
 
 export function handleApproval(event: ApprovalEvent): void {
   let entity = new Approval(
@@ -50,7 +52,11 @@ export function handleClaimedRewards(event: ClaimedRewardsEvent): void {
   let entity = new ClaimedRewards(
     event.transaction.hash.concatI32(event.logIndex.toI32())
   )
-  entity.rewardsList = event.params.rewardsList
+
+  entity.rewardsList = event.params.rewardsList.map<Bytes>(reward =>
+    Bytes.fromHexString(reward.toHexString())
+  )
+
   entity.claimedAmounts = event.params.claimedAmounts
 
   entity.blockNumber = event.block.number
