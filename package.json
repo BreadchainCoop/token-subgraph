@@ -4,15 +4,17 @@
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy": "graph deploy --node https://api.thegraph.com/deploy/ BreadchainCoop/bread-polygon",
-    "create-local": "graph create --node http://localhost:8020/ BreadchainCoop/bread-polygon",
-    "remove-local": "graph remove --node http://localhost:8020/ BreadchainCoop/bread-polygon",
-    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 BreadchainCoop/bread-polygon",
+    "deploy": "graph deploy --node https://api.thegraph.com/deploy/ breadchaincoop/bread-polygon",
+    "create-local": "graph create --node http://localhost:8020/ breadchaincoop/bread-polygon",
+    "remove-local": "graph remove --node http://localhost:8020/ breadchaincoop/bread-polygon",
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 breadchaincoop/bread-polygon",
     "test": "graph test"
   },
   "dependencies": {
     "@graphprotocol/graph-cli": "0.46.1",
     "@graphprotocol/graph-ts": "0.29.1"
   },
-  "devDependencies": { "matchstick-as": "0.5.0" }
+  "devDependencies": {
+    "matchstick-as": "0.5.0"
+  }
 }
