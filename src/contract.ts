@@ -4,6 +4,7 @@ import {
   Burned as BurnedEvent,
   ClaimedRewards as ClaimedRewardsEvent,
   ClaimedYield as ClaimedYieldEvent,
+  Contract,
   Minted as MintedEvent,
   OwnershipTransferred as OwnershipTransferredEvent,
   Transfer as TransferEvent
@@ -15,36 +16,49 @@ import {
   ClaimedYield,
   Minted,
   OwnershipTransferred,
-  Transfer
+  Transfer,
+  Token,
+  Account,
+  AccountBalance
 } from "../generated/schema"
+import {
+  BIGINT_ZERO,
+  CONTRACT_ADDRESS,
+  DEFAULT_DECIMALS,
+  GENESIS_ADDRESS
+} from "./constants"
+import { BigInt } from "@graphprotocol/graph-ts"
+import { 
+  // getOrCreateAccount,
+   getOrCreateAccountBalance } from "./account"
 
 export function handleApproval(event: ApprovalEvent): void {
-  let entity = new Approval(
+  let approval = new Approval(
     event.transaction.hash.concatI32(event.logIndex.toI32())
   )
-  entity.owner = event.params.owner
-  entity.spender = event.params.spender
-  entity.value = event.params.value
+  approval.owner = event.params.owner
+  approval.spender = event.params.spender
+  approval.value = event.params.value
 
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
+  approval.blockNumber = event.block.number
+  approval.blockTimestamp = event.block.timestamp
+  approval.transactionHash = event.transaction.hash
 
-  entity.save()
+  approval.save()
 }
 
 export function handleBurned(event: BurnedEvent): void {
-  let entity = new Burned(
+  let burned = new Burned(
     event.transaction.hash.concatI32(event.logIndex.toI32())
   )
-  entity.receiver = event.params.receiver
-  entity.amount = event.params.amount
+  burned.receiver = event.params.receiver
+  burned.amount = event.params.amount
 
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
+  burned.blockNumber = event.block.number
+  burned.blockTimestamp = event.block.timestamp
+  burned.transactionHash = event.transaction.hash
 
-  entity.save()
+  burned.save()
 }
 
 export function handleClaimedRewards(event: ClaimedRewardsEvent): void {
@@ -79,17 +93,18 @@ export function handleClaimedYield(event: ClaimedYieldEvent): void {
 }
 
 export function handleMinted(event: MintedEvent): void {
-  let entity = new Minted(
+  let minted = new Minted(
     event.transaction.hash.concatI32(event.logIndex.toI32())
   )
-  entity.receiver = event.params.receiver
-  entity.amount = event.params.amount
+  minted.receiver = event.params.receiver
+  minted.amount = event.params.amount
 
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
+  minted.blockNumber = event.block.number
+  minted.blockTimestamp = event.block.timestamp
+  minted.transactionHash = event.transaction.hash
 
-  entity.save()
+  // token.save()
+  minted.save()
 }
 
 export function handleOwnershipTransferred(
@@ -108,17 +123,142 @@ export function handleOwnershipTransferred(
   entity.save()
 }
 
+function getOrCreateToken(tokenAddress: string): Token {
+  let token = Token.load(tokenAddress)
+
+  if (token != null) {
+    return token
+  }
+
+  if (tokenAddress != CONTRACT_ADDRESS) {
+    throw new Error(`${tokenAddress} no same as ${CONTRACT_ADDRESS}   !!!`)
+  }
+
+  token = new Token(tokenAddress)
+
+  token.minted = BigInt.fromI32(0)
+  token.burned = BigInt.fromI32(0)
+  token.transfers = BigInt.fromI32(0)
+
+  return token
+}
+
+function getOrCreateAccount(accountAddress: string): Account {
+  let account = Account.load(accountAddress)
+
+  if (account != null) {
+    return account
+  }
+
+  account = new Account(accountAddress)
+
+  return account
+}
+
 export function handleTransfer(event: TransferEvent): void {
-  let entity = new Transfer(
+  let tokenAddress = event.address.toHex()
+  let token = getOrCreateToken(tokenAddress)
+
+  let amount = event.params.value
+  if (amount == BIGINT_ZERO) {
+    return
+  }
+
+  // token.transfers = token.transfers.plus(BigInt.fromI32(1))
+
+  const toAddress = event.params.to.toHex()
+  const fromAddress = event.params.from.toHex()
+
+  let isBurn = toAddress == GENESIS_ADDRESS
+  let isMint = fromAddress == GENESIS_ADDRESS
+  let isTransfer = !isBurn && !isMint
+
+  let toAccount = getOrCreateAccount(toAddress)
+  let fromAccount = getOrCreateAccount(fromAddress)
+
+  if (isMint) {
+    token.minted = token.minted.plus(BigInt.fromI32(1))
+    // let fromBalance = increaseAccountBalance(fromAccount, token, amount)
+    // fromBalance.blockNumber = event.block.number
+    // fromBalance.timestamp = event.block.timestamp
+    // // INCREASE token supply
+    // token.minted = token.minted.plus(BigInt.fromI32(1))
+    // fromBalance.save()
+    token.save()
+  }
+  if (isBurn) {
+    token.burned = token.burned.plus(BigInt.fromI32(1))
+    // let fromBalance = decreaseAccountBalance(fromAccount, token, amount)
+    // fromBalance.blockNumber = event.block.number
+    // fromBalance.timestamp = event.block.timestamp
+    // token.burned = token.burned.plus(BigInt.fromI32(1))
+    // // DECREASE token supply
+
+    // fromBalance.save()
+    token.save()
+  }
+  if (isTransfer) {
+    token.transfers = token.transfers.plus(BigInt.fromI32(1))
+    // let fromBalance = decreaseAccountBalance(fromAccount, token, amount)
+    // let toBalance = increaseAccountBalance(toAccount, token, amount)
+    // toBalance.blockNumber = event.block.number
+    // toBalance.timestamp = event.block.timestamp
+    // fromBalance.blockNumber = event.block.number
+    // fromBalance.timestamp = event.block.timestamp
+
+    // fromBalance.save()
+    // toBalance.save()
+    token.save()
+  }
+
+  // // let isEventProcessed = false
+
+  // if (isBurn) {
+  //   token.burned = token.burned.plus(new BigInt(1))
+  // } else if (isMint) {
+  //   token.minted = token.minted.plus(new BigInt(1))
+  // } else {
+  //   // In this case, it will be a normal transfer event.
+  //   token.transfers = token.transfers.plus(new BigInt(1))
+  // }
+
+  // }
+
+  let transfer = new Transfer(
     event.transaction.hash.concatI32(event.logIndex.toI32())
   )
-  entity.from = event.params.from
-  entity.to = event.params.to
-  entity.value = event.params.value
+  transfer.from = event.params.from
+  transfer.to = event.params.to
+  transfer.value = event.params.value
 
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
+  transfer.blockNumber = event.block.number
+  transfer.blockTimestamp = event.block.timestamp
+  transfer.transactionHash = event.transaction.hash
 
-  entity.save()
+  transfer.save()
+}
+
+export function increaseAccountBalance(
+  account: Account,
+  token: Token,
+  amount: BigInt
+): AccountBalance {
+  let balance = getOrCreateAccountBalance(account, token)
+  balance.amount = balance.amount.plus(amount)
+
+  return balance
+}
+
+export function decreaseAccountBalance(
+  account: Account,
+  token: Token,
+  amount: BigInt
+): AccountBalance {
+  let balance = getOrCreateAccountBalance(account, token)
+  balance.amount = balance.amount.minus(amount)
+  if (balance.amount < BIGINT_ZERO) {
+    balance.amount = BIGINT_ZERO
+  }
+
+  return balance
 }
